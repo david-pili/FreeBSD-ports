@@ -1,6 +1,6 @@
 # $FreeBSD$
 
-PORTNAME=	pfSense-upgrade
+PORTNAME=	Speedgoat-upgrade
 PORTVERSION=	0.62
 CATEGORIES=	sysutils
 MASTER_SITES=	# empty
@@ -15,8 +15,8 @@ LICENSE=	APACHE20
 NO_MTREE=	yes
 NO_BUILD=	yes
 
-PLIST_FILES=	libexec/pfSense-upgrade \
-		sbin/pfSense-upgrade
+PLIST_FILES=	libexec/Speegoat-upgrade \
+		sbin/Speedgoat-upgrade
 
 do-extract:
 	@${MKDIR} ${WRKSRC}
@@ -25,9 +25,9 @@ do-extract:
 do-install:
 	${MKDIR} ${STAGEDIR}${PREFIX}/sbin
 	${MKDIR} ${STAGEDIR}${PREFIX}/libexec
-	${INSTALL_SCRIPT} ${WRKSRC}/pfSense-upgrade \
+	${INSTALL_SCRIPT} ${WRKSRC}/Speedgoat-upgrade \
 		${STAGEDIR}${PREFIX}/libexec
-	${INSTALL_SCRIPT} ${WRKSRC}/pfSense-upgrade.wrapper \
-		${STAGEDIR}${PREFIX}/sbin/pfSense-upgrade
+	${INSTALL_SCRIPT} ${WRKSRC}/Speedgoat-upgrade.wrapper \
+		${STAGEDIR}${PREFIX}/sbin/Speedgoat-upgrade
 
 .include <bsd.port.mk>
