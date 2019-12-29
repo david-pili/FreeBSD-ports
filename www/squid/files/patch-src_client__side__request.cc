@@ -1,12 +1,13 @@
---- /home/davidp/Desktop/client_side_request.cc	2017-08-19 12:48:49.000000000 -0600
-+++ client_side_request.cc	2019-12-19 13:10:48.943836528 -0700
-@@ -1,5 +1,5 @@
- /*
-- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
-+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
-  *
-  * Squid software is distributed under GPLv2+ license and includes
-  * contributions from numerous individuals and organizations.
+http://www.squid-cache.org/Versions/v3/3.5/changesets/SQUID-2018_2.patch
+
+commit 8232b83d3fa47a1399f155cb829db829369fbae9 (refs/remotes/origin/v3.5)
+Author: squidadm <squidadm@users.noreply.github.com>
+Date:   2018-01-21 08:07:08 +1300
+
+    Fix indirect IP logging for transactions without a client connection (#129) (#136)
+
+--- src/client_side_request.cc.orig	2018-02-23 13:39:32 UTC
++++ src/client_side_request.cc
 @@ -488,9 +488,9 @@
          * Ensure that the access log shows the indirect client
          * instead of the direct client.
