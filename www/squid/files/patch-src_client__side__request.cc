@@ -21,17 +21,18 @@ Date:   2018-01-21 08:07:08 +1300
      }
      request->x_forwarded_for_iterator.clean();
      request->flags.done_follow_x_forwarded_for = true;
-@@ -540,7 +540,8 @@
+@@ -540,7 +540,9 @@
  {
      // IP address validation for Host: failed. Admin wants to ignore them.
      // NP: we do not yet handle CONNECT tunnels well, so ignore for them
 -    if (!Config.onoff.hostStrictVerify && http->request->method != Http::METHOD_CONNECT) {
 +    const Ssl::BumpMode bumpMode = http->getConn()->sslBumpMode;
-+    if ((!Config.onoff.hostStrictVerify && http->request->method != Http::METHOD_CONNECT) || (!Config.onoff.hostStrictVerify && (bumpMode == Ssl::bumpPeek || bumpMode == Ssl::bumpSplice))) {
++    debug(85, 3 "NDTesting Ssl bump mode" << bumpMode);
++    if ((!Config.onoff.hostStrictVerify && http->request->method != Http::METHOD_CONNECT) || (!Config.onoff.hostStrictVerify && (bumpMode == Ssl::bumpPeek || bumpMode == Ssl::bumpSplice)) {
          debugs(85, 3, "SECURITY ALERT: Host header forgery detected on " << http->getConn()->clientConnection <<
                 " (" << A << " does not match " << B << ") on URL: " << urlCanonical(http->request));
 
-@@ -1419,6 +1420,11 @@
+@@ -1419,6 +1421,11 @@
  bool
  ClientRequestContext::sslBumpAccessCheck()
  {
