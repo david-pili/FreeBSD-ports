@@ -27,7 +27,7 @@ Date:   2018-01-21 08:07:08 +1300
      // NP: we do not yet handle CONNECT tunnels well, so ignore for them
 -    if (!Config.onoff.hostStrictVerify && http->request->method != Http::METHOD_CONNECT) {
 +    const Ssl::BumpMode bumpMode = http->getConn()->sslBumpMode;
-+    if ((!Config.onoff.hostStrictVerify && http->request->method != Http::METHOD_CONNECT) || (!Config.onoff.hostStrictVerify && bumpMode == "peek")) {
++    if ((!Config.onoff.hostStrictVerify && http->request->method != Http::METHOD_CONNECT) || (!Config.onoff.hostStrictVerify && (bumpMode == Ssl::bumpPeek || bumpMode == Ssl::bumpSplice))) {
          debugs(85, 3, "SECURITY ALERT: Host header forgery detected on " << http->getConn()->clientConnection <<
                 " (" << A << " does not match " << B << ") on URL: " << urlCanonical(http->request));
 
