@@ -2,10 +2,11 @@
 # $FreeBSD$
 
 PORTNAME?=	fetchmail
-PORTVERSION=	6.4.1
-PORTREVISION=	1
-CATEGORIES=	mail ipv6
-MASTER_SITES=	SF/${PORTNAME}/branch_6.4/
+PORTVERSION=	6.4.2
+CATEGORIES=	mail
+# The next line is inherited by the fetchmailconf slave port,
+# do NOT replace fetchmail by ${PORTNAME}
+MASTER_SITES=	SF/fetchmail/branch_6.4/
 
 MAINTAINER=	chalpin@cs.wisc.edu
 COMMENT?=	Batch mail retrieval utility for IMAP/POP3/ETRN/ODMR
@@ -69,7 +70,7 @@ PATCH_STRIP=	-p1
 
 .if empty(MASTERDIR)
 post-build:
-	${MAKE_CMD} -C ${WRKSRC} check
+	${MAKE_CMD} -C ${WRKSRC} check ; { r=$$? ; ( set -x ; ${CAT} "${WRKSRC}/test-suite.log" ) ; exit $$r ; }
 
 post-install:
 	${INSTALL} -d ${STAGEDIR}/var/run/fetchmail
@@ -83,4 +84,13 @@ post-install-DOCS-on:
 	cd ${WRKSRC} && ${INSTALL_DATA} ${PORTDOCS} ${STAGEDIR}${DOCSDIR}
 
 .endif
-.include <bsd.port.mk>
+
+.include <bsd.port.pre.mk>
+
+.if ${ARCH:Mpowerpc*} && ${OSREL:R} < 13
+# as of 2019-10-02, powerpc's base compiler does not yield a working fetchmail.
+# https://svnweb.freebsd.org/ports?view=revision&revision=513614 -- pkubaj@
+USE_GCC=	yes
+.endif
+
+.include <bsd.port.post.mk>

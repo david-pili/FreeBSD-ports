@@ -3,7 +3,7 @@
  * squidguard.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2015 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2015-2020 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2006-2011 Serg Dvoriancev
  * Copyright (c) 2013 Alexander Wilke <nachtfalkeaw@web.de>
  * Copyright (c) 2013 Marcello Coutinho
@@ -919,7 +919,6 @@ function squidguard_install_command() {
         sg_check_system();
 
         # generate squidGuard blacklist entries file (check with squidGuard PORT)
-#        conf_mount_rw();
         $blklist_file = SQUIDGUARD_BLK_FILELISTPATH;
 
 
@@ -930,7 +929,6 @@ function squidguard_install_command() {
         }
         set_file_access(SQUIDGUARD_WORKDIR, OWNER_NAME, 0755);
         set_file_access(SQUIDGUARD_DBHOME, OWNER_NAME, 0755);
-#        conf_mount_ro();
 
         sg_reconfigure();
     }
@@ -1026,7 +1024,6 @@ function convert_pfxml_to_sgxml() {
     capability_update_source();
 
     global $config;
-    conf_mount_rw();
     $sgxml = array();
     $pfxml = $config['installedpackages'][MODULE_GENERAL]['config'][0];
 
@@ -1050,6 +1047,11 @@ function convert_pfxml_to_sgxml() {
     $sgxml[F_TIMES]            = convert_pfxml_to_sgxml_time($config);
     $sgxml[F_ACLS]             = convert_pfxml_to_sgxml_acl($config);
     $sgxml[F_DEFAULT]          = convert_pfxml_to_sgxml_default($config);
+
+    # url_rewrite_children options
+    $sgxml[F_REWRITE_CH]		= $pfxml['rewrite_children'];
+    $sgxml[F_REWRITE_CH_STARTUP]	= $pfxml['rewrite_children_startup'];
+    $sgxml[F_REWRITE_CH_IDLE]		= $pfxml['rewrite_children_idle'];
 
     # log
     $sgxml[F_ENABLELOG]    = $pfxml['enable_log']    == 'on' ? 'on' : 'off';
@@ -1083,7 +1085,6 @@ function convert_pfxml_to_sgxml() {
     $cfg_xml = dump_xml_config($sgxml, F_SQUIDGUARD);
     safe_mkdir(dirname($sgxml[F_SGCONF_XML]));
     file_put_contents($sgxml[F_SGCONF_XML], $cfg_xml);
-    conf_mount_ro();
 
     return $sgxml;
 }

@@ -3,7 +3,7 @@
  * nrpe.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2011-2015 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2011-2020 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2009 Erik Kristensen
  * All rights reserved.
  *
@@ -155,10 +155,8 @@ EOD;
 }
 
 function nrpe_resync_package() {
-	conf_mount_rw();
 	nrpe_custom_php_write_config();
 	nrpe_custom_php_service();
-	conf_mount_ro();
 }
 
 function nrpe_custom_php_write_config() {

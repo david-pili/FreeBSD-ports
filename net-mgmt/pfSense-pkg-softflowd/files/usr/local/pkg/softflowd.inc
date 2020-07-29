@@ -3,7 +3,7 @@
  * softflowd.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2013-2017 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2013-2020 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +33,6 @@ function sync_package_softflowd() {
 	} else {
 		$cf = array();
 	}
-	conf_mount_rw();
 	$interface_list = explode(",", $cf['interface']);
 	if (!empty($cf['host']) && !empty($interface_list) && $cf['enable'] != "off") {
 		$cf['host'] = is_ipaddrv6($cf['host']) ? "[{$cf['host']}]" : $cf['host'];
@@ -48,7 +47,7 @@ function sync_package_softflowd() {
 				continue;
 			}
 			
-			$start .= "\n\t/usr/local/sbin/softflowd ";
+			$start .= "\n\t/usr/local/bin/softflowd ";
 			$start .= " -i " . escapeshellarg($if_index++ . ":" . $interface);
 			$start .= " -n " . escapeshellarg("{$cf['host']}:{$cf['port']}");
 			if (is_numericint($cf['maxflows'])) {
@@ -57,11 +56,17 @@ function sync_package_softflowd() {
 			if (is_numericint($cf['hoplimit'])) {
 				$start .= " -L " . escapeshellarg($cf['hoplimit']);
 			}
+			if (is_numericint($cf['sample']) && ($cf['sample'] > 0)) {
+				$start .= " -s " . escapeshellarg($cf['sample']);
+			}
 			if ($cf['version'] != "") {
 				$start .= " -v " . escapeshellarg($cf['version']);
 			}
 			if ($cf['flowtracking'] != "") {
 				$start .= " -T " . escapeshellarg($cf['flowtracking']);
+			}
+			if ($cf['flowtimestamp'] != "" && $cf['flowtimestamp'] != "omit") {
+				$start .= " -A " . escapeshellarg($cf['flowtimestamp']);
 			}
 			if (is_numericint($cf['timeout-general'])) {
 				$start .= " -t " . escapeshellarg("general={$cf['timeout-general']}");
@@ -105,7 +110,6 @@ function sync_package_softflowd() {
 		stop_service("softflowd");
 		unlink_if_exists("/usr/local/etc/rc.d/softflowd.sh");
 	}
-	conf_mount_ro();
 }
 
 function validate_form_softflowd($post, &$input_errors) {
@@ -115,11 +119,14 @@ function validate_form_softflowd($post, &$input_errors) {
 	if (!is_port($post['port'])) {
 		$input_errors[] = "You must specify a valid port number in the 'Port' field";
 	}
-	if (!in_array($post['version'], array(1, 5, 9, 10))) {
+	if (!in_array($post['version'], array(1, 5, 9, 10, 'psamp'))) {
 		$input_errors[] = 'You must specify a netflow version';
 	}
-	if (!in_array($post['flowtracking'], array("vlan", "full", "proto", "ip"))) {
+	if (!in_array($post['flowtracking'], array("ether", "vlan", "full", "proto", "ip"))) {
 		$input_errors[] = 'You must specify a valid flow tracking selection';
+	}
+	if (!in_array($post['flowtimestamp'], array("sec", "milli", "micro", "nano", "omit"))) {
+		$input_errors[] = 'You must specify a valid flow timestamp precision';
 	}
 	if (!empty($post['hoplimit']) && (!is_numericint($post['hoplimit']) || ($post['hoplimit'] < 1) || ($post['hoplimit'] > 255))) {
 		$input_errors[] = 'You must specify a valid hop limit';

@@ -2,7 +2,7 @@
 # $FreeBSD$
 
 PORTNAME=	nss
-PORTVERSION=	3.47.1
+PORTVERSION=	3.51
 CATEGORIES=	security
 MASTER_SITES=	MOZILLA/security/${PORTNAME}/releases/${DISTNAME:tu:C/[-.]/_/g}_RTM/src
 
@@ -30,7 +30,7 @@ MAKE_ENV=	LIBRARY_PATH="${LOCALBASE}/lib" \
 		FREEBL_LOWHASH=1 \
 		NSS_DISABLE_GTESTS=1 \
 		NSS_USE_SYSTEM_SQLITE=1
-CFLAGS+=	-I${LOCALBASE}/include/nspr
+CFLAGS+=	-I${LOCALBASE}/include/nspr -Wno-error=unused-function
 
 SUB_FILES=	nss-config nss.pc
 SUB_LIST=	PORTVERSION=${PORTVERSION}
@@ -55,8 +55,10 @@ BINS=		${DIST}/${OPSYS}${OSREL}_OPT.OBJ
 BINS=		${DIST}/${OPSYS}${OSREL}_DBG.OBJ
 .endif
 
-.if ${OPSYS} == FreeBSD && ${ARCH} == i386 && ! ${MACHINE_CPU:Msse2}
-USES+=		compiler:c++14-lang # gcm.h
+.if ${ARCH} == powerpc64
+USES+=		compiler:c++11-lang # -mcrypto -mvsx
+.else
+MAKE_ENV+=	NSS_DISABLE_ALTIVEC=1
 .endif
 
 .if ${OPSYS} == FreeBSD && ${ARCH} == amd64

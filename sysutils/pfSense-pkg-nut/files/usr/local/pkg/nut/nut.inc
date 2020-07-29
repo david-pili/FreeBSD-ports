@@ -3,7 +3,7 @@
  * nut.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2004-2016 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2004-2020 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2016-2017 Denny Page
  * All rights reserved.
  *
@@ -269,7 +269,6 @@ function nut_sync_config() {
 		$monfile .= "\n\n" . base64_decode($nut_config['upsmon_conf']) . "\n";
 	}
 
-	conf_mount_rw();
 	if (!empty($upsfile)) {
 		nut_write_file(NUT_UPSFILE, $upsfile, 0640);
 	} else {
@@ -288,7 +287,6 @@ function nut_sync_config() {
 	nut_write_file(NUT_MONFILE, $monfile, 0640);
 	nut_write_rcfile($driver);
 	nut_write_shutdownfile();
-	conf_mount_ro();
 
 	if (platform_booting()) {
 		return;

@@ -3,7 +3,7 @@
  * haproxy.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2009 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2009-2020 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2013-2016 PiBa-NL
  * All rights reserved.
  *
@@ -457,11 +457,19 @@ function haproxy_expand_alias_array($address_or_alias) {
 		$alias = $aliastable[$item];
 		if ($alias_type == "url") {
 			$items = array_merge($items, explode(' ',$alias));
-		} else
-		if ($alias_type == "network") {
+		} elseif ($alias_type == "urltable") {
+			$urltable = alias_expand_urltable($item);
+			if (!empty($urltable)) {
+				$urltable_arr = array();
+				$urlfile_as_arr = file($urltable);
+				foreach ($urlfile_as_arr as $line) {
+					$urltable_arr[] = rtrim($line);
+				}
+				$items = array_merge($items, $urltable_arr);
+			}
+		} elseif ($alias_type == "network") {
 			$items = array_merge($items, explode(' ',$alias));
-		} else
-		if ($alias_type == "host") {
+		} elseif ($alias_type == "host") {
 			$items = array_merge($items, explode(' ',$alias));
 		} else {
 			$result[] = $item;
@@ -1568,7 +1576,8 @@ function haproxy_writeconf($configpath) {
 			$tmp = !empty($a_global['resolver_timeoutretry']) ? $a_global['resolver_timeoutretry'] : '1s';
 			fwrite ($fd, "\ttimeout retry {$tmp}\n");
 			$tmp = !empty($a_global['resolver_holdvalid']) ? $a_global['resolver_holdvalid'] : '10s';
-			fwrite ($fd, "\thold valid {$tmp}\n");
+			fwrite ($fd, "\ttimeout resolve {$tmp}\n");
+            
 			fwrite ($fd, "\n");
 		}
 	}
@@ -2236,7 +2245,7 @@ function load_ipfw_rules() {
 	$rules = "flush\n";
 	foreach($transparent_backends as $transparent_be) {
 		if (is_ipaddrv4($transparent_be["address"])) {
-			$rules .= "add $rulenum fwd localhost tcp from {$transparent_be["address"]} {$transparent_be["port"]} to any in recv {$transparent_be["interface"]}\n";
+			$rules .= "add $rulenum fwd 127.0.0.1 tcp from {$transparent_be["address"]} {$transparent_be["port"]} to any in recv {$transparent_be["interface"]}\n";
 		} elseif (is_ipaddrv6($transparent_be["address"])) {
 			list ($addr, $scope) = explode("%", $transparent_be['address']);
 			$rules .= "add $rulenum fwd ::1 tcp from {$addr} {$transparent_be["port"]} to any in recv {$transparent_be["interface"]}\n";

@@ -3,7 +3,7 @@
  * sudo.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2013-2015 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2013-2020 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,7 +55,6 @@ function sudo_install() {
 function sudo_write_config() {
 	global $config;
 	$sudoers = "";
-	conf_mount_rw();
 
 	$sudoconf = "Plugin sudoers_policy " . SUDO_LIBEXEC_DIR . "/sudoers.so\n";
 	$sudoconf .= "Plugin sudoers_io " . SUDO_LIBEXEC_DIR . "/sudoers.so\n";
@@ -104,7 +103,6 @@ function sudo_write_config() {
 		log_error("Sudoers file invalid: {$result}");
 		unlink($tmpsudoers);
 	}
-	conf_mount_ro();
 }
 
 /*

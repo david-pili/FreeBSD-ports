@@ -3,7 +3,7 @@
  * blinkled.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2009-2015 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2009-2020 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,13 +39,11 @@ EOD;
 	if (($blinkled_config['enable_led3']) && ($blinkled_config['iface_led3']))
 		$start .= "\t" . blinkled_launch(convert_friendly_interface_to_real_interface_name($blinkled_config['iface_led3']), 3, true) . "\n";
 
-	conf_mount_rw();
 	write_rcfile(array(
 		'file' => 'blinkled.sh',
 		'start' => $start,
 		'stop' => $stop)
 	);
-	conf_mount_ro();
 }
 
 function sync_package_blinkled() {

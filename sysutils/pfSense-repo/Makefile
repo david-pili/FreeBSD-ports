@@ -2,6 +2,7 @@
 
 PORTNAME=	pfSense-repo
 DISTVERSION=	2.4.5
+PORTREVISION=	2
 CATEGORIES=	sysutils
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -11,8 +12,6 @@ MAINTAINER=	coreteam@pfsense.org
 COMMENT=	Setup pfSense pkg(8) repositories
 
 LICENSE=	APACHE20
-
-RUN_DEPENDS=	${LOCALBASE}/sbin/pfSense-upgrade:sysutils/pfSense-upgrade
 
 NO_MTREE=	yes
 

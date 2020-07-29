@@ -3,7 +3,7 @@
  * frr.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2017 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2017-2020 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,9 @@ define('PKG_FRR_CONFIG_BASE', '/var/etc/frr');
 global $frr_config_base;
 $frr_config_base = PKG_FRR_CONFIG_BASE;
 
+global $frr_modules;
+$frr_modules = array('zebra', 'staticd', 'bgpd', 'ospfd', 'ospf6d', 'bfdd');
+
 global $frr_well_known_communities;
 $frr_well_known_communities = array("internet", "no-export", "no-advertise", "local-as");
 
@@ -41,10 +44,12 @@ $frr_auto_config_warning = <<<EOF
 # The contents of this file will be overwritten without warning!  #
 ###################################################################
 
+
 EOF;
 
 require_once("frr/inc/frr_validation.inc");
 require_once("frr/inc/frr_zebra.inc");
+require_once("frr/inc/frr_bfd.inc");
 require_once("frr/inc/frr_bgp.inc");
 require_once("frr/inc/frr_ospf.inc");
 require_once("frr/inc/frr_ospf6.inc");
@@ -70,7 +75,7 @@ function frr_get_interfaces($includedefault = true, $includevips = true, $includ
 	 * OSPF interface selections can't use 'default'.
 	 */
 	if ($includedefault) {
-		$interfaces['default'] = "default";
+		$interfaces['default'] = "Default";
 	} else {
 		$interfaces = array();
 	}
@@ -163,6 +168,13 @@ function frr_plugin_carp($pluginparams) {
  * interface in FRR status so routing will work again.
  */
 function frr_ipsec_reload() {
+	global $config;
+	init_config_arr(array('installedpackages', 'frr', 'config', 0));
+	if (!empty($config['installedpackages']['frr']['config'][0]['ignoreipsecrestart']) ||
+	    empty($config['installedpackages']['frr']['config'][0]['enable']) || !is_process_running('zebra')) {
+		return;
+	}
+
 	require_once('interfaces.inc');
 	$vti_ifs = array_keys(interface_ipsec_vti_list_all());
 	foreach ($vti_ifs as $vif) {
@@ -255,13 +267,19 @@ function frr_cidr_to_wildcard_bits($cidr) {
 
 /* Create the rc.d service control script for FRR */
 function frr_generate_config_rcfile() {
-	global $config, $frr_config_base;
+	global $config, $frr_config_base, $frr_modules;
 	/* If frr is not configured, then stop */
 	if (is_array($config['installedpackages']['frr']['config'])) {
 		$frr_conf = &$config['installedpackages']['frr']['config'][0];
 	} else {
 		return null;
 	}
+
+	/* Get FRR daemon modules to append to daemon commands */
+	$zebradmodules = ($config['installedpackages']['frr']['config'][0]['enablesnmpagentx']) ? '-M snmp' : '';
+	$bgpdmodules = ($config['installedpackages']['frrbgp']['config'][0]['enablesnmpagentx']) ? '-M snmp' : '';
+	$ospfdmodules = ($config['installedpackages']['frrospfd']['config'][0]['enablesnmpagentx']) ? '-M snmp' : '';
+	$ospf6dmodules = ($config['installedpackages']['frrospf6d']['config'][0]['enablesnmpagentx']) ? '-M snmp' : '';
 
 	/* Setup a CARP VIP status check, if needed, so the service won't start
 	 * unless this node is in a MASTER state */
@@ -301,6 +319,10 @@ if [ -e /var/run/frr/bgpd.pid ]; then
 	/bin/pkill -F /var/run/frr/bgpd.pid
 	/bin/rm -f /var/run/frr/bgpd.pid
 fi
+if [ -e /var/run/frr/bfdd.pid ]; then
+	/bin/pkill -F /var/run/frr/bfdd.pid
+	/bin/rm -f /var/run/frr/bfdd.pid
+fi
 EOF;
 	/* When starting, cleanup first, then fix permissions and make sure no
 	 * other instances are running before starting back up. */
@@ -312,6 +334,7 @@ EOF;
 /bin/rm -f /var/run/frr/ospfd.pid
 /bin/rm -f /var/run/frr/ospf6d.pid
 /bin/rm -f /var/run/frr/bgpd.pid
+/bin/rm -f /var/run/frr/bfdd.pid
 
 if [ -s {$frr_config_base}/frr_md5pw_del.conf ]; then
 	/sbin/setkey -f {$frr_config_base}/frr_md5pw_del.conf
@@ -347,12 +370,18 @@ if /bin/pgrep -q bgpd; then
 	sleep 1
 	/usr/bin/killall -9 bgpd 2>/dev/null
 fi
+if /bin/pgrep -q bfdd; then
+	/usr/bin/killall bfdd
+	sleep 1
+	/usr/bin/killall -9 bfdd 2>/dev/null
+fi
 {$carp_ip_status_check}
-[ -s {$frr_config_base}/zebra.conf ] && /usr/local/sbin/zebra -d -f {$frr_config_base}/zebra.conf
+[ -s {$frr_config_base}/zebra.conf ] && /usr/local/sbin/zebra -d -f {$frr_config_base}/zebra.conf {$zebradmodules}
 [ -s {$frr_config_base}/staticd.conf ] && /usr/local/sbin/staticd -d -f {$frr_config_base}/staticd.conf
-[ -s {$frr_config_base}/ospfd.conf ] && /usr/local/sbin/ospfd -d -f {$frr_config_base}/ospfd.conf
-[ -s {$frr_config_base}/ospf6d.conf ] && /usr/local/sbin/ospf6d -d -f {$frr_config_base}/ospf6d.conf
-[ -s {$frr_config_base}/bgpd.conf ] && /usr/local/sbin/bgpd -d -f {$frr_config_base}/bgpd.conf
+[ -s {$frr_config_base}/ospfd.conf ] && /usr/local/sbin/ospfd -d -f {$frr_config_base}/ospfd.conf {$ospfdmodules}
+[ -s {$frr_config_base}/ospf6d.conf ] && /usr/local/sbin/ospf6d -d -f {$frr_config_base}/ospf6d.conf {$ospf6dmodules}
+[ -s {$frr_config_base}/bgpd.conf ] && /usr/local/sbin/bgpd -d -f {$frr_config_base}/bgpd.conf {$bgpdmodules}
+[ -s {$frr_config_base}/bfdd.conf ] && /usr/local/sbin/bfdd -d -f {$frr_config_base}/bfdd.conf
 [ -s {$frr_config_base}/frr_md5pw_add.conf ] && /sbin/setkey -f {$frr_config_base}/frr_md5pw_add.conf
 
 EOF;
@@ -365,12 +394,13 @@ EOF;
 	);
 
 	/* Ensure files have correct ownership and permissions */
-	mwexec("/bin/chmod a+rx /usr/local/etc/rc.d/frr.sh");
-	mwexec("/bin/chmod u+rw,go-rw {$frr_config_base}/ospfd.conf");
-	mwexec("/bin/chmod u+rw,go-rw {$frr_config_base}/ospf6d.conf");
-	mwexec("/bin/chmod u+rw,go-rw {$frr_config_base}/zebra.conf");
-	mwexec("/bin/chmod u+rw,go-rw {$frr_config_base}/staticd.conf");
-	mwexec("/bin/chmod u+rw,go-rw {$frr_config_base}/bgpd.conf");
+	chmod("/usr/local/etc/rc.d/frr.sh", 0555);
+	foreach ($frr_modules as $module) {
+		$moduleRunningFile = "{$frr_config_base}/{$module}.conf";
+		if (file_exists($moduleRunningFile) && (filesize($moduleRunningFile) > 0)) {
+			chmod($moduleRunningFile, 0600);
+		}
+	}
 
 	/* Start/Restart FRR, if a CARP VIP is set, check its status and act
 	 * appropriately. */
@@ -522,6 +552,9 @@ function frr_generate_config() {
 	/* OSPF6 Configuration */
 	frr_generate_config_ospf6();
 
+	/* BFD Configuration */
+	frr_generate_config_bfd();
+
 	/* Create the rc.d service control script */
 	frr_generate_config_rcfile();
 
@@ -545,6 +578,8 @@ function frr_package_config_upgrade() {
 	/* Populate FRR OSPF Settings */
 	init_config_arr(array('installedpackages', 'frrospfd', 'config', '0'));
 	$ospfd_conf = &$config['installedpackages']['frrospfd']['config'][0];
+	init_config_arr(array('installedpackages', 'frrospf6d', 'config', '0'));
+	$ospf6d_conf = &$config['installedpackages']['frrospf6d']['config'][0];
 	init_config_arr(array('installedpackages', 'frrglobalacls', 'config'));
 	$frr_acls_conf = &$config['installedpackages']['frrglobalacls']['config'];
 	init_config_arr(array('installedpackages', 'frrglobalroutemaps', 'config'));
@@ -652,9 +687,27 @@ function frr_package_config_upgrade() {
 	}
 
 	/* updatefib -> areatype */
-	if (isset($conf['updatefib'])) {
-		$conf['areatype'] = $conf['updatefib'];
-		unset($conf['updatefib']);
+	if (isset($ospfd_conf['updatefib'])) {
+		$ospfd_conf['areatype'] = $ospfd_conf['updatefib'];
+		unset($ospfd_conf['updatefib']);
+		$need_write = true;
+	}
+
+	/* area->defaultarea */
+	if ((strlen($ospfd_conf['defaultarea']) == 0) && !empty($ospfd_conf['area'])) {
+		$ospfd_conf['defaultarea'] = $ospfd_conf['area'];
+		unset($ospfd_conf['area']);
+		$need_write = true;
+	}
+	if ((strlen($ospf6d_conf['defaultarea']) == 0) && !empty($ospf6d_conf['area'])) {
+		$ospf6d_conf['defaultarea'] = $ospf6d_conf['area'];
+		unset($ospf6d_conf['area']);
+		$need_write = true;
+	}
+	/* areatype->defaultareatype */
+	if ((strlen($ospfd_conf['defaultareatype']) == 0) && !empty($ospfd_conf['areatype'])) {
+		$ospfd_conf['defaultareatype'] = $ospfd_conf['areatype'];
+		unset($ospfd_conf['areatype']);
 		$need_write = true;
 	}
 

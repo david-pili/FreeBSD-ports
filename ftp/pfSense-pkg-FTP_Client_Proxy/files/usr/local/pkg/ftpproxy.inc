@@ -3,7 +3,7 @@
  * ftpproxy.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2015 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2015-2020 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +20,6 @@
  */
 
 function sync_package_ftpproxy() {
-	conf_mount_rw();
 	global $config;
 	$cf = $config['installedpackages']['ftpclientproxy']['config'][0];
 
@@ -73,7 +72,6 @@ function sync_package_ftpproxy() {
 		)
 	);
 	restart_service("ftp-proxy");
-	conf_mount_ro();
 	filter_configure();
 }
 

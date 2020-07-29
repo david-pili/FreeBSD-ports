@@ -3,10 +3,10 @@
  * snort_define_servers.php
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2018 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2018-2020 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2003-2004 Manuel Kasper <mk@neon1.net>.
  * Copyright (c) 2008-2009 Robert Zelaya.
- * Copyright (c) 2014-2018 Bill Meeks
+ * Copyright (c) 2014-2020 Bill Meeks
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -131,9 +131,7 @@ if ($_POST['save']) {
 
 		/* Update the snort conf file for this interface. */
 		$rebuild_rules = false;
-		conf_mount_rw();
 		snort_generate_conf($a_nat[$id]);
-		conf_mount_ro();
 
 		/* Soft-restart Snort to live-load new variables. */
 		snort_reload_config($a_nat[$id]);
@@ -186,7 +184,6 @@ $tab_array[] = array($menu_iface . gettext("Categories"), false, "/snort/snort_r
 $tab_array[] = array($menu_iface . gettext("Rules"), false, "/snort/snort_rules.php?id={$id}");
 $tab_array[] = array($menu_iface . gettext("Variables"), true, "/snort/snort_define_servers.php?id={$id}");
 $tab_array[] = array($menu_iface . gettext("Preprocs"), false, "/snort/snort_preprocessors.php?id={$id}");
-$tab_array[] = array($menu_iface . gettext("Barnyard2"), false, "/snort/snort_barnyard.php?id={$id}");
 $tab_array[] = array($menu_iface . gettext("IP Rep"), false, "/snort/snort_ip_reputation.php?id={$id}");
 $tab_array[] = array($menu_iface . gettext("Logs"), false, "/snort/snort_interface_logs.php?id={$id}");
 display_top_tabs($tab_array, true);

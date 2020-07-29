@@ -3,7 +3,7 @@
  * snort_passlist.php
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2004-2018 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2004-2020 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2009-2010 Robert Zelaya
  * Copyright (c) 2018 Bill Meeks
  * All rights reserved.
@@ -81,9 +81,7 @@ if (isset($_POST['del_btn'])) {
 		}
 		if ($need_save) {
 			write_config("Snort pkg: deleted PASS LIST.");
-			conf_mount_rw();
 			sync_snort_package_config();
-			conf_mount_ro();
 			header("Location: /snort/snort_passlist.php");
 			return;
 		}
@@ -105,9 +103,7 @@ else {
 		else {
 			unset($a_passlist[$delbtn_list]);
 			write_config("Snort pkg: deleted PASS LIST.");
-			conf_mount_rw();
 			sync_snort_package_config();
-			conf_mount_ro();
 			header("Location: /snort/snort_passlist.php");
 			return;
 		}

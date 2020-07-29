@@ -3,11 +3,11 @@
  * suricata_post_install.php
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2019 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2019-2020 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2005 Bill Marquette <bill.marquette@gmail.com>.
  * Copyright (c) 2003-2004 Manuel Kasper <mk@neon1.net>.
  * Copyright (c) 2009 Robert Zelaya Sr. Developer
- * Copyright (c) 2019 Bill Meeks
+ * Copyright (c) 2020 Bill Meeks
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,7 +52,11 @@ if(is_process_running("suricata")) {
 	// Delete any leftover suricata PID files in /var/run
 	unlink_if_exists("{$g['varrun_path']}/suricata_*.pid");
 }
-// Hard kill any running Barnyard2 processes
+/******************************************************************/
+/* Hard kill any running Barnyard2 processes. Barnyard2 is        */
+/* deprecated, but this code is left to ensure no active          */
+/* Barnyard2 process remains.                                     */
+/******************************************************************/
 if(is_process_running("barnyard")) {
 	killbyname("barnyard2");
 	sleep(2);
@@ -87,8 +91,8 @@ foreach ($map_files as $f) {
 	}
 }
 
-// Download the latest GeoIP DB updates and create cron task if the feature is not disabled
-if ($config['installedpackages']['suricata']['config'][0]['autogeoipupdate'] != 'off') {
+// Download the latest GeoIP DB updates and create cron task if the feature is enabled
+if ($config['installedpackages']['suricata']['config'][0]['autogeoipupdate'] == 'on' && !empty($config['installedpackages']['suricata']['config'][0]['maxmind_geoipdb_key'])) {
 	syslog(LOG_NOTICE, gettext("[Suricata] Installing free GeoLite2 country IP database file in /usr/local/share/suricata/GeoLite2/..."));
 	include("/usr/local/pkg/suricata/suricata_geoipupdate.php");
 	install_cron_job("/usr/bin/nice -n20 /usr/local/bin/php-cgi -f /usr/local/pkg/suricata/suricata_geoipupdate.php", TRUE, 0, 6, "*", "*", "*", "root");
@@ -231,11 +235,6 @@ if ($config['installedpackages']['suricata']['config'][0]['forcekeepsettings'] =
 		// Now write out the conf file using $suricata_conf_text contents
 		@file_put_contents("{$suricatacfgdir}/suricata.yaml", $suricata_conf_text);
 		unset($suricata_conf_text);
-
-		// create barnyard2.conf file for interface
-		if ($suricatacfg['barnyard_enable'] == 'on')
-			suricata_generate_barnyard2_conf($suricatacfg, $if_real);
-
 		update_status(gettext(" done.") . "\n");
 	}
 

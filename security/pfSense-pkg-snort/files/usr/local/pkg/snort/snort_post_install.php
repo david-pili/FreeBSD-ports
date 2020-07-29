@@ -3,9 +3,9 @@
  * snort_post_install.php
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2006-2019 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2006-2020 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2009-2010 Robert Zelaya
- * Copyright (c) 2013-2019 Bill Meeks
+ * Copyright (c) 2013-2020 Bill Meeks
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,26 +64,18 @@ unlink_if_exists("{$g['varrun_path']}/snort_pkg_starting.lck");
 /* Set flag for post-install in progress */
 $g['snort_postinstall'] = true;
 
-/* Set conf partition to read-write so we can make changes there */
-conf_mount_rw();
-
-/* cleanup default files */
-@rename("{$snortdir}/snort.conf-sample", "{$snortdir}/snort.conf");
-@rename("{$snortdir}/threshold.conf-sample", "{$snortdir}/threshold.conf");
-@rename("{$snortdir}/sid-msg.map-sample", "{$snortdir}/sid-msg.map");
-@rename("{$snortdir}/unicode.map-sample", "{$snortdir}/unicode.map");
-@rename("{$snortdir}/file_magic.conf-sample", "{$snortdir}/file_magic.conf");
-@rename("{$snortdir}/classification.config-sample", "{$snortdir}/classification.config");
-@rename("{$snortdir}/generators-sample", "{$snortdir}/generators");
-@rename("{$snortdir}/reference.config-sample", "{$snortdir}/reference.config");
-@rename("{$snortdir}/gen-msg.map-sample", "{$snortdir}/gen-msg.map");
-@rename("{$snortdir}/attribute_table.dtd-sample", "{$snortdir}/attribute_table.dtd");
-
-/* fix up the preprocessor rules filenames from a PBI package install */
-$preproc_rules = array("decoder.rules", "preprocessor.rules", "sensitive-data.rules");
-foreach ($preproc_rules as $file) {
-	if (file_exists("{$snortdir}/preproc_rules/{$file}-sample"))
-		@rename("{$snortdir}/preproc_rules/{$file}-sample", "{$snortdir}/preproc_rules/{$file}");
+/*****************************************************************/
+/* In the event this is a reinstall (or update), then recreate   */
+/* critical map, config and preprocessor rules files from the    */
+/* package sample templates.                                     */
+/*****************************************************************/
+$map_files = array("/unicode.map", "/gen-msg.map", "/classification.config", "/reference.config", 
+		   "/attribute_table.dtd", "/preproc_rules/preprocessor.rules", 
+		   "/preproc_rules/decoder.rules" , "/preproc_rules/sensitive-data.rules" );
+foreach ($map_files as $f) {
+	if (file_exists(SNORTDIR .  $f . "-sample") && !file_exists(SNORTDIR . $f)) {
+		copy(SNORTDIR .  $f . "-sample", SNORTDIR . $f);
+	}
 }
 
 /* Remove any previously installed scripts since we rebuild them */
@@ -178,7 +170,6 @@ if ($config['installedpackages']['snortglobal']['forcekeepsettings'] == 'on') {
 	include('/usr/local/pkg/snort/snort_check_for_rule_updates.php');
 	update_status(gettext("Generating snort.conf configuration file from saved settings.") . "\n");
 	$rebuild_rules = true;
-	conf_mount_rw();
 
 	/* Create the snort.conf files for each enabled interface */
 	$snortconf = $config['installedpackages']['snortglobal']['rule'];
@@ -208,11 +199,6 @@ if ($config['installedpackages']['snortglobal']['forcekeepsettings'] == 'on') {
 		// Clean up variables we no longer need and free memory
 		unset($snort_conf_text, $selected_rules_sections, $suppress_file_name, $snort_misc_include_rules, $spoink_type, $snortunifiedlog_type, $alertsystemlog_type);
 		unset($home_net, $external_net, $ipvardef, $portvardef);
-
-		// Create barnyard2.conf file for interface
-		if ($snortcfg['barnyard_enable'] == 'on')
-			snort_generate_barnyard2_conf($snortcfg, $if_real);
-
 		update_status(gettext(" done.") . "\n");
 	}
 
@@ -235,9 +221,6 @@ if ($config['installedpackages']['snortglobal']['forcekeepsettings'] == 'on') {
 	update_status(gettext("Finished rebuilding Snort configuration files.") . "\n");
 	log_error(gettext("[Snort] Finished rebuilding installation from saved settings."));
 }
-
-/* We're finished with conf partition mods, return to read-only */
-conf_mount_ro();
 
 /* If an existing Snort Dashboard Widget container is not found, */
 /* then insert our default Widget Dashboard container.           */

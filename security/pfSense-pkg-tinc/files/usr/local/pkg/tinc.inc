@@ -3,7 +3,7 @@
  * tinc.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2016 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2016-2020 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,7 +57,6 @@ function tinc_save() {
 	global $config, $configpath;
 	$configpath = '/usr/local/etc/tinc';
 
-	conf_mount_rw();
 
 	rmdir_recursive("{$configpath}.old");
 	rename("{$configpath}", "{$configpath}.old");
@@ -166,7 +165,6 @@ function tinc_save() {
 		unlink_if_exists("/usr/local/etc/rc.d/tinc.sh");
 	}
 
-	conf_mount_ro();
 }
 
 function tinc_write_rcfile() {

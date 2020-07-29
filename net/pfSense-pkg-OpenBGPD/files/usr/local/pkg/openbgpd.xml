@@ -8,7 +8,7 @@
  * openbgpd.xml
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2007-2015 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2007-2020 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -106,7 +106,7 @@
 		</field>
 
 		<field>
-			<fielddescr>Router IP</fielddescr>
+			<fielddescr>Router ID</fielddescr>
 			<fieldname>routerid</fieldname>
 			<description>Set the router ID to the given IP address, which must be local to the machine.</description>
 			<type>input</type>

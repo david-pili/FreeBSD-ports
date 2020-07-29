@@ -3,7 +3,7 @@
  * zabbix-proxy.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2015 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2015-2020 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2013 Danilo G. Baio
  * Copyright (c) 2013 Marcello Coutinho
  * All rights reserved.
@@ -91,7 +91,6 @@ function validate_input_zabbix_proxy($post, &$input_errors) {
 function sync_package_zabbix_proxy() {
 	global $config, $g;
 
-	conf_mount_rw();
 
 	// Check zabbix proxy config
 	if (isset($config['installedpackages']['%%ZABBIXUNIQNAME%%']) &&
@@ -251,19 +250,19 @@ EOF;
 
 	if [ ! -d /var/log/zabbix-proxy ]; then
 		/bin/mkdir -p /var/log/zabbix-proxy
-		/usr/sbin/chmod 755 /var/log/zabbix-proxy
+		/bin/chmod 755 /var/log/zabbix-proxy
 	fi
 	/usr/sbin/chown -R zabbix:zabbix /var/log/zabbix-proxy
 
 	if [ ! -d /var/run/zabbix-proxy ]; then
 		/bin/mkdir -p /var/run/zabbix-proxy
-		/usr/sbin/chmod 755 /var/run/zabbix-proxy
+		/bin/chmod 755 /var/run/zabbix-proxy
 	fi
 	/usr/sbin/chown -R zabbix:zabbix /var/run/zabbix-proxy
 
 	if [ ! -d /var/db/zabbix-proxy ]; then
 		/bin/mkdir -p /var/db/zabbix-proxy
-		/usr/sbin/chmod 755 /var/db/zabbix-proxy
+		/bin/chmod 755 /var/db/zabbix-proxy
 	fi
 	/usr/sbin/chown -R zabbix:zabbix /var/db/zabbix-proxy
 
@@ -305,7 +304,6 @@ EOF;
 		unlink_if_exists($zproxy_rcfile);
 	}
 
-	conf_mount_ro();
 }
 
 // Based on openvpn_add_keyfile() function

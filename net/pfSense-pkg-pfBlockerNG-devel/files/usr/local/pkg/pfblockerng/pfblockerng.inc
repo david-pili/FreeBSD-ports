@@ -3,7 +3,7 @@
  * pfblockerng.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2015 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2015-2020 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2015-2019 BBcan177@gmail.com
  * All rights reserved.
  *
@@ -98,6 +98,11 @@ $pfb['dnsbl_tld_txt']	= "{$pfb['dnsdir']}/DNSBL_TLD.txt";
 $pfb['dnsbl_tld_data']	= '/usr/local/pkg/pfblockerng/dnsbl_tld';
 $pfb['dnsbl_conf']	= '/var/unbound/pfb_dnsbl_lighty.conf';
 $pfb['dnsbl_cert']	= '/var/unbound/dnsbl_cert.pem';
+
+$pfb['dnsbl_safesearch']		= '/usr/local/pkg/pfblockerng/pfb_dnsbl.safesearch.conf';
+$pfb['dnsbl_youtube_restrict']		= '/usr/local/pkg/pfblockerng/pfb_dnsbl.youtube_restrict.conf';
+$pfb['dnsbl_youtube_restrictmoderate']	= '/usr/local/pkg/pfblockerng/pfb_dnsbl.youtube_restrictmoderate.conf';
+$pfb['dnsbl_firefoxdoh']		= '/usr/local/pkg/pfblockerng/pfb_dnsbl.firefoxdoh.conf';
 
 // tmp files
 $pfb['geoip_tmp']		= '/tmp/pfb_continent';
@@ -236,6 +241,7 @@ function pfb_global() {
 	$pfb['supp']		= $pfb['ipconfig']['suppression'];		// Enable Suppression
 	$pfb['cc']		= $pfb['ipconfig']['database_cc'];		// Disable Country database CRON updates
 	$pfb['maxmind_locale']	= $pfb['ipconfig']['maxmind_locale']	?: 'en';// MaxMind Localized Language setting
+	$pfb['maxmind_key']	= $pfb['ipconfig']['maxmind_key']	?: '';	// Maxmind License Key
 	$pfb['asn_reporting']	= $pfb['ipconfig']['asn_reporting']	?: 'disabled'; // ASN Reporting
 
 	$pfb['iplocal']		= $config['interfaces']['lan']['ipaddr'];	// Lan IP address
@@ -2283,7 +2289,7 @@ function pfb_download($list_url, $file_dwn, $pflex=FALSE, $header, $format, $log
 						curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 						curl_setopt($ch, CURLOPT_SSL_CIPHER_LIST, 'TLSv1.3, TLSv1.2, TLSv1.1, TLSv1, SSLv3');
 						$log = "\n[ ! ] Downgrading SSL settings (Flex) ";
-						pfb_logger("{$log}", 1);
+						pfb_logger("{$log}", "{$logtype}");
 					}
 					else {
 						$log = curl_error($ch) . " Retry in 5 seconds...\n";
@@ -2297,16 +2303,16 @@ function pfb_download($list_url, $file_dwn, $pflex=FALSE, $header, $format, $log
 				$http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
 				if (isset($pfb['rfc7231'][$http_status])) {
-					if ($logtype != 3) {
-						pfb_logger(". {$pfb['rfc7231'][$http_status]}", 1);
+					if ($logtype < 3) {
+						pfb_logger(". {$pfb['rfc7231'][$http_status]}", $logtype);
 					} else {
-						pfb_logger(" {$file_dwn}\t\t{$pfb['rfc7231'][$http_status]}\n", 3);
+						pfb_logger(" {$file_dwn}\t\t{$pfb['rfc7231'][$http_status]}\n", $logtype);
 					}
 				} else {
-					if ($logtype != 3) {
-						pfb_logger(". unknown http status code | {$http_status}", 2);
+					if ($logtype < 3) {
+						pfb_logger(". unknown http status code | {$http_status}", $logtype);
 					} else {
-						pfb_logger(". unknown http status code | {$http_status}", 3);
+						pfb_logger(". unknown http status code | {$http_status}", $logtype);
 					}
 				}
 				curl_close($ch);
@@ -2342,11 +2348,11 @@ function pfb_download($list_url, $file_dwn, $pflex=FALSE, $header, $format, $log
 		}
 
 		// Decompress file if required
-		if ($file_type == 'application/x-gzip') {
+		if ($file_type == 'application/x-gzip' || $file_type == 'application/gzip') {
 			if ($type == 'geoip') {
 				// Extras - MaxMind downloads
 				@rename("{$file_dwn}.raw", strstr("{$file_dwn}.raw", '.raw', TRUE));
-				exec("/usr/bin/tar -xzf {$file_dwn} --strip=1 -C {$pfb['geoipshare']}");
+				exec("/usr/bin/tar -xzf {$file_dwn} --strip=1 -C {$pfb['geoipshare']} >/dev/null 2>&1");
 				return TRUE;
 			}
 			elseif ($type == 'blacklist') {
@@ -2377,9 +2383,12 @@ function pfb_download($list_url, $file_dwn, $pflex=FALSE, $header, $format, $log
 			// Extras - MaxMind/TOP1M downloads
 			if ($type == 'geoip' || $type == 'top1m') {
 				// Determine if Zip contains multiple files
-				$archive = exec("/usr/bin/tar -tf {$file_dwn}.raw | grep -c ^");
-				if ($archive > 1) {
-					exec("/usr/bin/tar -xf {$file_dwn}.raw --strip=1 -C {$header}");
+				exec("/usr/bin/tar -tf {$file_dwn}.raw 2>&1", $archive_count, $retval);
+				if ($archive_count[0] == 'tar: Failed to set default locale') {
+					unset($archive_count[0]);
+				}
+				if (count($archive_count) > 1) {
+					exec("/usr/bin/tar -xf {$file_dwn}.raw --strip=1 -C {$header} >/dev/null 2>&1");
 				} else {
 					exec("/usr/bin/tar -xOf {$file_dwn}.raw > {$header}");
 				}
@@ -3454,7 +3463,11 @@ function pfb_daemon_filterlog() {
 	}
 
 	// Application paths
-	$pathgeoip = "/usr/local/bin/mmdblookup -f {$pfb['geoipshare']}/GeoLite2-Country.mmdb -i";
+	if (file_exists('/usr/local/bin/mmdblookup') && file_exists("{$pfb['geoipshare']}/GeoLite2-Country.mmdb")) {
+		$pathgeoip = "/usr/local/bin/mmdblookup -f {$pfb['geoipshare']}/GeoLite2-Country.mmdb -i";
+	} else {
+		$pathgeoip = '';
+	}
 
 	// Proofpoint ET IQRisk header name reference
 	init_config_arr(array('installedpackages', 'pfblockerngreputation', 'config', 0));
@@ -3678,9 +3691,14 @@ function pfb_daemon_filterlog() {
 					}
 
 					// Determine GeoIP isocode of host
-					$geoip = exec("{$pathgeoip} {$host} country iso_code | grep -v '^$' | cut -d '\"' -f2 2>&1");
-					if (empty($geoip)) {
-						$geoip = 'Unknown';
+					if (!empty($pathgeoip)) {
+						$geoip = exec("{$pathgeoip} {$host} country iso_code | grep -v '^$' | cut -d '\"' -f2 2>&1");
+						if (empty($geoip)) {
+							$geoip = 'Unk';
+						}
+					}
+					else {
+						$geoip = 'Unk';
 					}
 
 					// Modify host for ASN query
@@ -4827,6 +4845,11 @@ function sync_package_pfblockerng($cron='') {
 	$pfb['dnsbl_alexa_inc']	= $pfb['dnsblconfig']['alexa_inclusion'] ?: '';		// TOP1M TLDs inclusions for whitelisting
 	$pfb['dnsbl_tld']	= $pfb['dnsblconfig']['pfb_tld'];			// Enable TLD Function
 
+	init_config_arr(array('installedpackages', 'pfblockerngsafesearch'));
+	$pfb['safesearch_enable']	= $config['installedpackages']['pfblockerngsafesearch']['safesearch_enable']	?: 'Disabled';
+	$pfb['safesearch_youtube']	= $config['installedpackages']['pfblockerngsafesearch']['safesearch_youtube']	?: 'Disabled';
+	$pfb['safesearch_firefoxdoh']	= $config['installedpackages']['pfblockerngsafesearch']['safesearch_firefoxdoh']?: 'Disabled';
+
 	// Reputation config variables
 	init_config_arr(array('installedpackages', 'pfblockerngreputation', 'config', 0));
 	$pfb['config_rep'] = $config['installedpackages']['pfblockerngreputation']['config'][0];
@@ -5350,10 +5373,60 @@ function sync_package_pfblockerng($cron='') {
 				touch("{$pfb['dnsbl_file']}.reload");
 			}
 
+			// SafeSearch
+			pfb_logger("\n Loading DNSBL SafeSearch...", 1);
+			$safesearch_hosts = array();
+			$safesearch_types = array(	array( 'safesearch_enable',	'Enable',	'safesearch'),
+							array( 'safesearch_youtube',	'Strict',	'youtube_restrict'),
+							array( 'safesearch_youtube',	'Moderate',	'youtube_restrictmoderate'),
+							array( 'safesearch_firefoxdoh',	'Enable',	'firefoxdoh')
+							);
+
+			$safesearch_update = $pfb_found = FALSE;
+			foreach ($safesearch_types as $safe_type) {
+				if ($pfb[$safe_type[0]] == $safe_type[1]) {
+					$pfb_found = TRUE;
+
+					if (!file_exists("{$pfb['dnsbldir']}/pfb_dnsbl.{$safe_type[2]}.conf") ||
+					    @md5_file($pfb["dnsbl_{$safe_type[2]}"]) !==
+					    @md5_file("{$pfb['dnsbldir']}/pfb_dnsbl.{$safe_type[2]}.conf")) {
+						@copy($pfb["dnsbl_{$safe_type[2]}"], "{$pfb['dnsbldir']}/pfb_dnsbl.{$safe_type[2]}.conf");
+						$safesearch_update = TRUE;
+					}
+
+					// Collect SafeSearch domains for wildcard whitelisting
+					exec("cut -d '\"' -f2 {$pfb['dnsbldir']}/pfb_dnsbl.{$safe_type[2]}.conf | cut -d ' ' -f1", $safesearch_hosts);
+				}
+				elseif (file_exists("{$pfb['dnsbldir']}/pfb_dnsbl.{$safe_type[2]}.conf")) {
+					unlink("{$pfb['dnsbldir']}/pfb_dnsbl.{$safe_type[2]}.conf");
+					$safesearch_update = TRUE;
+				}
+			}
+
+			// Wildcard whitelist SafeSearch domains
+			$pfb_whitelist = '';
+			if (!empty($safesearch_hosts)) {
+				$safesearch_hosts = array_unique($safesearch_hosts);
+				foreach ($safesearch_hosts as $line) {
+					if (!empty($line)) {
+						// Remove 'www.' prefix
+						if (substr($line, 0, 4) == 'www.') {
+							$line = substr($line, 4);
+						}
+						$pfb_whitelist .= ".{$line} 60\n\"{$line} 60\n";
+					}
+				}
+			}
+
+			$s_log = ' disabled';
+			if ($pfb_found) {
+				$s_log = ' enabled';
+			}
+			pfb_logger(" {$s_log}", 1);
+
 			// Collect Whitelist, create string, and save to file (for grep -vF -f cmd)
 			pfb_logger("\n Loading DNSBL Whitelist...", 1);
 			$pfb_white = pfbng_text_area_decode($pfb['dnsblconfig']['suppression'], TRUE, FALSE);
-			$pfb_whitelist = '';
 			if (!empty($pfb_white)) {
 				foreach ($pfb_white as $line) {
 					if (!empty($line)) {
@@ -5376,9 +5449,17 @@ function sync_package_pfblockerng($cron='') {
 					}
 				}
 			}
+
 			$pfb_whitelist .= "\"localhost.localdomain 60\n";	// Added due to SWC Feed
 			@file_put_contents("{$pfb['dnsbl_supptxt']}", $pfb_whitelist, LOCK_EX);
 			pfb_logger(" completed", 1);
+
+			if ($safesearch_update) {
+				$log = "\n DNSBL - SafeSearch changes found - Rebuilding!\n";
+				pfb_logger("{$log}", 1);
+				$pfb['reuse_dnsbl'] = 'on';
+				touch("{$pfb['dnsbl_file']}.reload");
+			}
 
 			// Call TOP1M whitelist process
 			if ($pfb['dnsbl_alexa'] == 'on') {
@@ -6275,7 +6356,7 @@ function sync_package_pfblockerng($cron='') {
 		}
 
 		// Load new DNSBL updates to Unbound Resolver
-		if ($pfb['domain_update'] || $pfbupdate || $pfb['domain_clear']) {
+		if ($pfb['domain_update'] || $pfbupdate || $pfbpython ||$pfb['domain_clear'] || $safesearch_update) {
 			pfb_update_unbound('enabled', $pfbupdate);
 		}
 
@@ -6321,11 +6402,45 @@ function sync_package_pfblockerng($cron='') {
 		pfb_logger("{$log}", 1);
 	}
 
+	// Download MaxMind Databases if not found
+	$maxmind_verify = FALSE;
+	if (!empty($pfb['maxmind_key'])) {
+
+		$maxmind_verify = TRUE;
+		if (!file_exists("{$pfb['geoipshare']}/GeoLite2-Country.mmdb") ||
+		    !file_exists("{$pfb['geoipshare']}/GeoLite2-Country-Blocks-IPv4.csv") ||
+		    !file_exists("{$pfb['dbdir']}/geoip.txt") ||
+		    !file_exists("{$pfb['ccdir']}/Top_Spammers_v4.info")) {
+
+			// Check if MaxMind download already in progress
+			exec('/bin/ps -wax', $result_cron);
+			if (!preg_grep("/pfblockerng[.]php\s+dc/", $result_cron)) {
+				$log = "\nMaxMind Database downloading and processing ( approx 4MB ) ... Please wait ...\n";
+				pfb_logger("{$log}", 1);
+				exec("/usr/local/bin/php /usr/local/www/pfblockerng/pfblockerng.php dc >> {$pfb['log']} 2>&1");
+				restart_service('pfb_filter');
+			}
+			else {
+				$log = "\nMaxMind download already in process...\n";
+				pfb_logger("{$log}", 1);
+			}
+		}
+	}
+
+	$maxmind_run_once = TRUE;
 	foreach ($pfb['continents'] as $continent => $pfb_alias) {
 		if (isset($config['installedpackages']['pfblockerng' . strtolower(str_replace(' ', '', $continent))]['config'])) {
 			$continent_config = $config['installedpackages']['pfblockerng' . strtolower(str_replace(' ', '', $continent))]['config'][0];
 			$cc_name = 'pfblockerng' . strtolower(str_replace(' ', '', $continent));
-			if ($continent_config['action'] != 'Disabled' && $pfb['enable'] == 'on') {
+			if (isset($continent_config['action']) && $continent_config['action'] != 'Disabled' && $pfb['enable'] == 'on') {
+
+				// Maxmind License Key verification and user notification
+				if ($maxmind_run_once && !$maxmind_verify) {
+					$mmsg = 'MaxMind now requires a License Key! Review the IP tab: MaxMind settings for more information.';
+					pfb_logger("\n\nURGENT:\n    {$mmsg}\n", 1);
+					file_notice('pfBlockerNG MaxMind', $mmsg, 'pfBlockerNG', '/pfblockerng/pfblockerng_ip.php', 2);
+					$maxmind_run_once = FALSE;
+				}
 
 				$urlvalue = '';	// Firewall: Aliases value field
 
@@ -6541,6 +6656,7 @@ function sync_package_pfblockerng($cron='') {
 			}
 		}
 
+		$maxmind_run_once = TRUE;
 		foreach	($lists	as $list) {
 			if ($runonce_v4 && $list['vtype'] == '_v4') {
 				$runonce_v4 = FALSE;
@@ -6564,6 +6680,16 @@ function sync_package_pfblockerng($cron='') {
 							$custom	= TRUE;
 						} else {
 							$custom	= FALSE;
+						}
+
+						// Maxmind License Key verification
+						if ($maxmind_run_once && $row['format'] == 'geoip') {
+							$mmsg = 'MaxMind now requires a License Key! Review the IP tab: MaxMind settings for more information.';
+							if (empty($pfb['maxmind_key'])) {
+								pfb_logger("\n\nURGENT:\n    {$mmsg}.\n", 1);
+								file_notice('pfBlockerNG MaxMind', $mmsg, 'pfBlockerNG', '/pfblockerng/pfblockerng_ip.php', 2);
+							}
+							$maxmind_run_once = FALSE;
 						}
 
 						// IPv4 Advanced Tunables

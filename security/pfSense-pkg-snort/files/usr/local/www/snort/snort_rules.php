@@ -3,9 +3,9 @@
  * snort_rules.php
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2004-2019 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2004-2020 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2008-2009 Robert Zelaya
- * Copyright (c) 2019 Bill Meeks
+ * Copyright (c) 2020 Bill Meeks
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -627,9 +627,7 @@ elseif (isset($_POST['clear'])) {
 	unset($a_rule[$id]['customrules']);
 	write_config("Snort pkg: clear all custom rules for {$a_rule[$id]['interface']}.");
 	$rebuild_rules = true;
-	conf_mount_rw();
 	snort_generate_conf($a_rule[$id]);
-	conf_mount_ro();
 	$rebuild_rules = false;
 	$pconfig['customrules'] = '';
 
@@ -644,9 +642,7 @@ elseif (isset($_POST['save'])) {
 		unset($a_rule[$id]['customrules']);
 	write_config("Snort pkg: save modified custom rules for {$a_rule[$id]['interface']}.");
 	$rebuild_rules = true;
-	conf_mount_rw();
 	snort_generate_conf($a_rule[$id]);
-	conf_mount_ro();
 	$rebuild_rules = false;
 	$output = "";
 	$retcode = "";
@@ -690,9 +686,7 @@ elseif ($_POST['apply']) {
 	/* rules for this interface.                     */
 	/*************************************************/
 	$rebuild_rules = true;
-	conf_mount_rw();
 	snort_generate_conf($a_rule[$id]);
-	conf_mount_ro();
 	$rebuild_rules = false;
 
 	// Soft-restart Snort to live-load new rules
@@ -759,7 +753,6 @@ $menu_iface=($if_friendly?substr($if_friendly,0,5)." ":"Iface ");
 	$tab_array[] = array($menu_iface . gettext("Rules"), true, "/snort/snort_rules.php?id={$id}");
 	$tab_array[] = array($menu_iface . gettext("Variables"), false, "/snort/snort_define_servers.php?id={$id}");
 	$tab_array[] = array($menu_iface . gettext("Preprocs"), false, "/snort/snort_preprocessors.php?id={$id}");
-	$tab_array[] = array($menu_iface . gettext("Barnyard2"), false, "/snort/snort_barnyard.php?id={$id}");
 	$tab_array[] = array($menu_iface . gettext("IP Rep"), false, "/snort/snort_ip_reputation.php?id={$id}");
 	$tab_array[] = array($menu_iface . gettext("Logs"), false, "/snort/snort_interface_logs.php?id={$id}");
 display_top_tabs($tab_array, true, 'nav nav-tabs');

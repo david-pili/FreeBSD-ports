@@ -3,7 +3,7 @@
  * darkstat.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2009-2017 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2009-2020 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +33,6 @@ function sync_package_darkstat() {
 	} else {
 		$darkstat_config = array();
 	}
-	conf_mount_rw();
 
 	/* If the service is (being) disabled, stop it (if running), remove rc script and do nothing else */
 	if ($darkstat_config['enable'] != "on") {
@@ -143,7 +142,6 @@ function sync_package_darkstat() {
 		start_service("darkstat");
 	}
 
-	conf_mount_ro();
 }
 
 function validate_input_darkstat($post, &$input_errors) {

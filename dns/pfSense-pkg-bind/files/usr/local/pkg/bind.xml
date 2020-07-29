@@ -8,7 +8,7 @@
  * bind.xml
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2015 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2015-2020 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2013 Juliano Oliveira
  * Copyright (c) 2013 Adriano Brancher
  * Copyright (c) 2016 Voleatech GmbH
@@ -289,6 +289,12 @@
 			<description>Enable forwarding queries to other DNS servers listed below rather than this server performing its own recursion.</description>
 			<type>checkbox</type>
 			<enablefields>bind_forwarder_ips</enablefields>
+		</field>
+		<field>
+			<fielddescr>DNSSEC Validation</fielddescr>
+			<fieldname>bind_dnssec_validation</fieldname>
+			<description>Enable DNSSEC validation when BIND is acting as a recursive resolver.</description>
+			<type>checkbox</type>
 		</field>
 		<field>
 			<fielddescr>Forwarder IPs</fielddescr>

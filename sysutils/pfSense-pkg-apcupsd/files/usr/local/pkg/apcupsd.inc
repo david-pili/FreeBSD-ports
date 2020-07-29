@@ -3,7 +3,7 @@
  * apcupsd.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2015 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2015-2020 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2013-2016 Danilo G. Baio <dbaio@bsd.com.br>
  * All rights reserved.
  *
@@ -115,7 +115,6 @@ function validate_input_apcupsd($post, &$input_errors) {
 function sync_package_apcupsd() {
 	global $config, $g;
 
-	conf_mount_rw();
 
 	if (is_service_running('apcupsd') && !file_exists("{$g['tmp_path']}/.rc.start_packages.running")) {
 		log_error("Stopping service apcupsd");
@@ -193,7 +192,6 @@ function sync_package_apcupsd() {
 		}
 	}
 
-	conf_mount_ro();
 }
 
 function apccontrol_scripts_install($emailnotification,$shutdownbehavior) {

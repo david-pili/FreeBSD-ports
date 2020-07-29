@@ -3,10 +3,10 @@
  * snort_preprocessors.php
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2011-2018 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2011-2020 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2003-2004 Manuel Kasper <mk@neon1.net>.
  * Copyright (c) 2008-2009 Robert Zelaya
- * Copyright (c) 2013-2018 Bill Meeks
+ * Copyright (c) 2013-2020 Bill Meeks
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -715,9 +715,7 @@ if ($_POST['save']) {
 		/* rules for this interface.                     */
 		/*************************************************/
 		$rebuild_rules = true;
-		conf_mount_rw();
 		snort_generate_conf($natent);
-		conf_mount_ro();
 		$rebuild_rules = false;
 
 		/* If 'preproc_auto_rule_disable' is off, then clear log file */
@@ -829,7 +827,6 @@ $tab_array = array();
 	$tab_array[] = array($menu_iface . gettext("Rules"), false, "/snort/snort_rules.php?id={$id}");
 	$tab_array[] = array($menu_iface . gettext("Variables"), false, "/snort/snort_define_servers.php?id={$id}");
 	$tab_array[] = array($menu_iface . gettext("Preprocs"), true, "/snort/snort_preprocessors.php?id={$id}");
-	$tab_array[] = array($menu_iface . gettext("Barnyard2"), false, "/snort/snort_barnyard.php?id={$id}");
 	$tab_array[] = array($menu_iface . gettext("IP Rep"), false, "/snort/snort_ip_reputation.php?id={$id}");
 	$tab_array[] = array($menu_iface . gettext("Logs"), false, "/snort/snort_interface_logs.php?id={$id}");
 display_top_tabs($tab_array, true);
@@ -2014,7 +2011,7 @@ print_callout('<p>' . gettext("Rules may be dependent on enbled preprocessors!  
 		$pconfig['smtp_log_mail_from'] == 'on' ? true:false,
 		'on'
 	));
-	$group->setHelp('<b>Note: </b>this is logged only when unified2 (Barnyard2) logging output is enabled.');
+	$group->setHelp('<b>Note: </b>this is logged only when unified2 logging output is enabled.');
 	$section->add($group);
 	$group = new Form_Group('Log Receipt To');
 	$group->add(new Form_Checkbox(
@@ -2024,7 +2021,7 @@ print_callout('<p>' . gettext("Rules may be dependent on enbled preprocessors!  
 		$pconfig['smtp_log_rcpt_to'] == 'on' ? true:false,
 		'on'
 	));
-	$group->setHelp('<b>Note: </b>this is logged only when unified2 (Barnyard2) logging output is enabled.');
+	$group->setHelp('<b>Note: </b>this is logged only when unified2 logging output is enabled.');
 	$section->add($group);
 	$group = new Form_Group('Log Filename');
 	$group->add(new Form_Checkbox(
@@ -2034,7 +2031,7 @@ print_callout('<p>' . gettext("Rules may be dependent on enbled preprocessors!  
 		$pconfig['smtp_log_filename'] == 'on' ? true:false,
 		'on'
 	));
-	$group->setHelp('<b>Note: </b>this is logged only when unified2 (Barnyard2) logging output is enabled.');
+	$group->setHelp('<b>Note: </b>this is logged only when unified2 logging output is enabled.');
 	$section->add($group);
 	$group = new Form_Group('Log E-Mail Headers');
 	$group->add(new Form_Checkbox(
@@ -2044,7 +2041,7 @@ print_callout('<p>' . gettext("Rules may be dependent on enbled preprocessors!  
 		$pconfig['smtp_log_email_hdrs'] == 'on' ? true:false,
 		'on'
 	));
-	$group->setHelp('<b>Note: </b>this is logged only when unified2 (Barnyard2) logging output is enabled.');
+	$group->setHelp('<b>Note: </b>this is logged only when unified2 logging output is enabled.');
 	$section->add($group);
 	$group = new Form_Group('E-Mail Headers Log Depth');
 	$group->add(new Form_Input(

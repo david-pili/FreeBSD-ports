@@ -2,10 +2,10 @@
 # $FreeBSD$
 
 PORTNAME=	postfix
-DISTVERSION=	3.4.7
+DISTVERSION=	3.4.9
 PORTREVISION?=	0
 PORTEPOCH=	1
-CATEGORIES=	mail ipv6
+CATEGORIES=	mail
 MASTER_SITES=	ftp://ftp.porcupine.org/mirrors/postfix-release/ \
 		http://de.postfix.org/ftpmirror/ \
 		http://cdn.postfix.johnriley.me/mirrors/postfix-release/ \
@@ -24,7 +24,7 @@ LICENSE_FILE=	${WRKSRC}/LICENSE
 LICENSE_NAME_IPL10=	IBM PUBLIC LICENSE VERSION 1.0
 LICENSE_PERMS_IPL10=	dist-mirror dist-sell pkg-mirror pkg-sell auto-accept
 
-PORTSCOUT=	limit:^3\.3\.
+PORTSCOUT=	limit:^3\.4\.
 
 CONFLICTS_INSTALL?=	courier-0.* opensmtpd-[0-9]* \
 		sendmail-8.* sendmail+*-8.* smail-3.* zmailer-2.* \
@@ -80,9 +80,10 @@ SASLKMIT_DESC=	If your SASL req. MIT Kerberos5, select this
 HTML1=	body_checks.5.html bounce.5.html postfix-power.png \
 	scache.8.html tlsmgr.8.html
 
-STRIP_LIBEXEC=	anvil bounce cleanup discard dnsblog error flush lmtp local master \
-		nqmgr oqmgr pickup pipe postscreen proxymap qmgr qmqpd scache showq \
-		smtp smtpd spawn tlsmgr tlsproxy trivial-rewrite verify virtual
+STRIP_LIBEXEC=	anvil bounce cleanup discard dnsblog error flush lmtp local \
+		master nqmgr oqmgr pickup pipe postlogd postscreen proxymap \
+		qmgr qmqpd scache showq smtp smtpd spawn tlsmgr tlsproxy \
+		trivial-rewrite verify virtual
 
 .if !defined(DEBUG)
 MAKEFILEFLAGS+=	DEBUG=

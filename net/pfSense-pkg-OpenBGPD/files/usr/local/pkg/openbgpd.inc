@@ -3,7 +3,7 @@
  * openbgpd.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2007-2015 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2007-2020 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,7 +45,6 @@ function openbgpd_install_conf() {
 	global $config, $g;
 	$pkg_bin = PKG_BGPD_BIN;
 
-	conf_mount_rw();
 
 	// Since we need to embed this in a string, copy to a var. Can't embed constants.
 	$bgpd_config_base = PKG_BGPD_CONFIG_BASE;
@@ -264,7 +263,6 @@ EOF;
 		openbgpd_restart();
 	}
 
-	conf_mount_ro();
 }
 
 function openbgpd_restart() {

@@ -3,7 +3,7 @@
  * squidguard_configurator.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2015 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2015-2020 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2006-2011 Serg Dvoriancev
  * All rights reserved.
  *
@@ -94,7 +94,6 @@ define('REDIRECTOR_OPTIONS_REM',   '# squidGuard options');
 define('REDIRECT_CHILDREN_OPT',    'url_rewrite_children');
 define('REDIRECTOR_PROGRAM_OPT',   'url_rewrite_program');
 define('REDIRECT_BYPASS_OPT',      'url_rewrite_bypass');
-define('REDIRECTOR_PROCESS_COUNT', '16 startup=8 idle=4 concurrency=0');
 
 # ------------------------------------------------------------------------------
 # squidguard config options
@@ -249,8 +248,10 @@ define('F_LDAPBINDPASS',        'ldapbindpass');
 define('F_LDAPVERSION',         'ldapversion');
 define('F_STRIPNTDOMAIN',       'stripntdomain');
 define('F_STRIPREALM',          'striprealm');
+define('F_REWRITE_CH',		'rewrite_children');
+define('F_REWRITE_CH_STARTUP',	'rewrite_children_startup');
+define('F_REWRITE_CH_IDLE',	'rewrite_children_idle');
 define('F_BINPATH',             'binpath');
-define('F_PROCCESSCOUNT',       'process_count');
 define('F_SQUIDCONFIGFILE',     'squid_configfile');
 define('F_ENABLED',             'enabled');
 define('F_SGCONF_XML',          'sgxml_file');
@@ -335,7 +336,6 @@ function sg_init($init = '')
         $squidguard_config[F_WORKDIR]         = SQUIDGUARD_WORKDIR;
         $squidguard_config[F_BINPATH]         = SQUIDGUARD_BINPATH;
         $squidguard_config[F_SQUIDCONFIGFILE] = SQUID_CONFIGFILE;
-        $squidguard_config[F_PROCCESSCOUNT]   = REDIRECTOR_PROCESS_COUNT;
 
     } else {
         # copy config from $init
@@ -372,9 +372,7 @@ function sg_load_configxml($filename)
 function sg_save_configxml($filename)
 {
     global $squidguard_config;
-    conf_mount_rw();
     file_put_contents($filename, dump_xml_config($squidguard_config, F_SQUIDGUARD));
-    conf_mount_ro();
 }
 
 # ------------------------------------------------------------------------------
@@ -394,13 +392,11 @@ function sg_reconfigure()
     # 3. generate squidGuard config
     $conf = sg_create_config();
     if ($conf) {
-        conf_mount_rw();
         if ($squidguard_config[F_WORKDIR])
             $conf_file = $squidguard_config[F_WORKDIR] . SQUIDGUARD_CONFIGFILE;
         file_put_contents($conf_file, $conf);
         file_put_contents(SQUID_LOCALBASE . '/etc/squid' . SQUIDGUARD_CONFIGFILE, $conf); # << squidGuard want config '/usr/local/etc/squid' by default
         set_file_access($squidguard_config[F_WORKDIR], OWNER_NAME, 0755);
-        conf_mount_ro();
         sg_addlog("sg_reconfigure", "Save squidGuard config to '$conf_file'.", SQUIDGUARD_INFO);
     } else
         sg_addlog("sg_reconfigure", "Can't create squidGuard config.", SQUIDGUARD_ERROR);
@@ -438,15 +434,18 @@ function squid_reconfigure($remove_only = '')
 
     # add new options - if squidGuard enabled
     if (empty($remove_only) && ($squidguard_config[F_ENABLED] === 'on')) {
-        $redirector_path = $squidguard_config[F_BINPATH] . '/squidGuard';
-        $redirector_conf = $squidguard_config[F_WORKDIR] . SQUIDGUARD_CONFIGFILE;
+	$redirector_path = $squidguard_config[F_BINPATH] . '/squidGuard';
+	$redirector_conf = $squidguard_config[F_WORKDIR] . SQUIDGUARD_CONFIGFILE;
+	$rewrite_children = (is_numeric($squidguard_config[F_REWRITE_CH])) ? $squidguard_config[F_REWRITE_CH] : '16'; 
+	$rewrite_children_startup = (is_numeric($squidguard_config[F_REWRITE_CH_STARTUP])) ? $squidguard_config[F_REWRITE_CH_STARTUP] : '8'; 
+	$rewrite_children_idle = (is_numeric($squidguard_config[F_REWRITE_CH_IDLE])) ? $squidguard_config[F_REWRITE_CH_IDLE] : '4'; 
 
-        $conf = array();
-        $conf[] = REDIRECTOR_PROGRAM_OPT . " $redirector_path -c $redirector_conf";
-        $conf[] = REDIRECT_BYPASS_OPT    . " off";
-        $conf[] = REDIRECT_CHILDREN_OPT  . " " . REDIRECTOR_PROCESS_COUNT;
+	$conf = array();
+	$conf[] = REDIRECTOR_PROGRAM_OPT . " $redirector_path -c $redirector_conf";
+	$conf[] = REDIRECT_BYPASS_OPT    . " off";
+	$conf[] = REDIRECT_CHILDREN_OPT  . " " . $rewrite_children . " startup=" . $rewrite_children_startup . " idle=" . $rewrite_children_idle . " concurrency=0";
 
-        sg_addlog("squid_reconfigure", "Add new redirector options to Squid config.", SQUIDGUARD_INFO);
+	sg_addlog("squid_reconfigure", "Add new redirector options to Squid config.", SQUIDGUARD_INFO);
     }
 
     # update config
@@ -470,7 +469,6 @@ function squid_reconfigure($remove_only = '')
 function sg_check_system()
 {
     global $squidguard_config;
-    conf_mount_rw();
 
     # check work_dir & create if not exists
     $work_dir = $squidguard_config[F_WORKDIR];
@@ -505,7 +503,6 @@ function sg_check_system()
         # set access right
         set_file_access($db_dir, OWNER_NAME, 0755);
     }
-    conf_mount_ro();
 
     # logrotate
     if (file_exists(SQUIDGUARD_SCR_LOGROTATE)) unlink(SQUIDGUARD_SCR_LOGROTATE);
@@ -522,7 +519,6 @@ function sg_check_system()
 function sg_reconfigure_user_db()
 {
     global $squidguard_config;
-    conf_mount_rw();
     $dbhome = $squidguard_config[F_DBHOME];
 
     sg_addlog("sg_reconfigure_user_db", "Begin with '$dbhome'", SQUIDGUARD_INFO);
@@ -597,7 +593,6 @@ function sg_reconfigure_user_db()
 
     # 7. remove unused db entries
     sg_remove_unused_db_entries();
-    conf_mount_ro();
 }
 
 # ------------------------------------------------------------------------------
@@ -606,7 +601,6 @@ function sg_reconfigure_user_db()
 function sg_remove_unused_db_entries()
 {
     global $squidguard_config;
-    conf_mount_rw();
     $db_entries = array();
     $file_list = '';
     $dbhome  = $squidguard_config[F_DBHOME];
@@ -647,7 +641,6 @@ function sg_remove_unused_db_entries()
             }
         }
     }
-    conf_mount_ro();
 }
 # ------------------------------------------------------------------------------
 # sg_rebuild_db  Rebuild squidGuard DB from list items
@@ -662,7 +655,6 @@ function sg_remove_unused_db_entries()
 function sg_rebuild_db($shtag, $rdb_dbhome, $rdb_itemslist)
 {
     global $squidguard_config;
-    conf_mount_rw();
     $conf   = '';
     $conf_path = '';
     $logdir = $squidguard_config[F_LOGDIR];
@@ -702,7 +694,6 @@ function sg_rebuild_db($shtag, $rdb_dbhome, $rdb_itemslist)
     # ! not background exec !
     mwexec($shfile);
     sg_addlog("sg_rebuild_db", "Started SH script '$shfile'.", SQUIDGUARD_INFO);
-    conf_mount_ro();
 }
 */
 # ------------------------------------------------------------------------------
@@ -1613,7 +1604,7 @@ function is_dest_url($url)
     $fmt  = "[a-zA-Z0-9_-]";
 
     if (empty($url)) return false;
-    if (preg_match("/^(($fmt){1,}\.){1,}($fmt){2,}(\/(.[^\*][^ ])*)/i", $url)) return true;
+    if (preg_match("/^(($fmt){1,}\.){1,}($fmt){1,}(\/(.[^\*][^ ])*)/i", $url)) return true;
     return false;
 }
 # ------------------------------------------------------------------------------
@@ -1657,7 +1648,7 @@ function is_ipaddr_valid($val)
 # ------------------------------------------------------------------------------
 function is_domain_valid($domain)
 {
-    $dm_fmt = "([a-z0-9\-]{1,})";
+    $dm_fmt = "([a-z_0-9\-]{1,})";
     $dm_fmt = "/^(($dm_fmt{1,}\.){1,}$dm_fmt{2,})+$/i"; # example: (my.)(super.)(domain.)com
     return is_string($domain) && preg_match($dm_fmt, trim($domain));
 }
@@ -2263,7 +2254,6 @@ function sg_uploadfile_from_url($url_file, $proxy = '')
     $download_tmpfile = SG_UPDATE_TMPFILE; #"/tmp/squidguard_download.tmp";
     $download_logfile = SG_UPDATE_LOGFILE; #"/tmp/squidguard_download.log";
 
-    conf_mount_rw();
     # open destination file
     $s = "Download archive '$url_file'" . ( $proxy ? " via proxy'$proxy'" : "" );
     sg_addlog("sg_uploadfile_from_url", $s, SQUIDGUARD_INFO);
@@ -2307,7 +2297,6 @@ function sg_uploadfile_from_url($url_file, $proxy = '')
     # close temp and log files
     fclose($ftmp);
     fclose($flog);
-    conf_mount_ro();
 
     if (!$err &&  file_exists( $download_tmpfile ))
         $result = file_get_contents( $download_tmpfile );
@@ -2326,7 +2315,6 @@ function squidguard_blacklist_restore_arcdb()
 
     squidguard_update_log("Restore default blacklist DB.", "new");
     if (file_exists($arc_db_dir)) {
-        conf_mount_rw();
         # copy arc blacklist to work DB with permissions
         mwexec("/bin/cp -R -p {$arc_db_dir}/ {$dbhome}");
         set_file_access($dbhome, OWNER_NAME, 0755);
@@ -2344,7 +2332,6 @@ function squidguard_blacklist_restore_arcdb()
         squidguard_update_log("Reconfigure Squid proxy.");
         mwexec(SQUID_BASE . "/sbin/squid -k reconfigure");
 
-        conf_mount_ro();
         squidguard_update_log("Restore success.");
     } else {
         sg_addlog("squidguard_blacklist_restore_arcdb", "File '{$arc_db_dir}' or '{$blklist_file}' not found.", SQUIDGUARD_ERROR);

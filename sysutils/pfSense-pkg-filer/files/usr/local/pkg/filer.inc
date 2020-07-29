@@ -3,7 +3,7 @@
  * filer.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2017 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2017-2020 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2012 Marcello Coutinho
  * Copyright (c) 2012 Brian Scholer
  * All rights reserved.
@@ -35,7 +35,6 @@ function sync_package_filer() {
 	global $config, $g;
 	$update_conf = 0;
 
-	conf_mount_rw();
 
 	/* Loop on configured files. */
 	if ($config['installedpackages']['filer']['config'] != "") {
@@ -76,7 +75,6 @@ function sync_package_filer() {
 		}
 	}
 
-	conf_mount_ro();
 	
 	filer_sync_on_changes();
 }

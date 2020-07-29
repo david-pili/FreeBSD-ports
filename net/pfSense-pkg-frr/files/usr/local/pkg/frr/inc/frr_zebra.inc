@@ -3,7 +3,7 @@
  * frr_zebra.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2017 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2017-2020 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +54,9 @@ function frr_get_routemap_list($exitaction = false, $yesno = false) {
 	 * for those, offer a "yes" or "no" choice. */
 	if ($yesno) {
 		$list[] = array("name" => "No", "value" => "no");
-		$list[] = array("name" => "Yes", "value" => "yes");
+		$list[] = array("name" => "IPv4", "value" => "ipv4");
+		$list[] = array("name" => "IPv6", "value" => "ipv6");
+		$list[] = array("name" => "IPv4+IPv6", "value" => "yes");
 	} else {
 		$list[] = array("name" => "None", "value" => "none");
 	}
@@ -588,7 +590,7 @@ function frr_zebra_generate_staticroutes() {
 /* Generate a convenience list of accept filters */
 function frr_zebra_generate_acceptfilters() {
 	global $config, $frr_config_base;
-	$noaccept = "\n# Accept Filters\n";
+
 	/* Check OSPF Interfaces for automatic accept filters */
 	if (is_array($config['installedpackages']['frrospfdinterfaces']['config'])) {
 		foreach ($config['installedpackages']['frrospfdinterfaces']['config'] as $conf) {
@@ -597,6 +599,7 @@ function frr_zebra_generate_acceptfilters() {
 				continue;
 			}
 			if (!empty($conf['acceptfilter']) && is_ipaddrv4($subnet) && is_numericint($interface_subnet)) {
+				$noaccept = $noaccept ?: "\n# Accept Filters\n";
 				$noaccept .= "ip prefix-list ACCEPTFILTER deny {$subnet}/{$interface_subnet}\n";
 				$noaccept .= "ip prefix-list ACCEPTFILTER deny {$interface_ip}/32\n";
 			}
@@ -607,6 +610,7 @@ function frr_zebra_generate_acceptfilters() {
 	if (is_array($config['installedpackages']['frr']['config'][0]['row'])) {
 		foreach ($config['installedpackages']['frr']['config'][0]['row'] as $redistr) {
 			if (isset($redistr['acceptfilter'])) {
+				$noaccept = $noaccept ?: "\n# Accept Filters\n";
 				$noaccept .= "ip prefix-list ACCEPTFILTER deny {$redistr['routevalue']}\n";
 			}
 		}
@@ -653,6 +657,10 @@ function frr_generate_config_zebra() {
 		if ($frr_conf['logging']) {
 			$zebraconffile .= "log syslog\n";
 		}
+		/* SNMP AgentX Support*/
+		if ($frr_conf['enablesnmpagentx']) {
+			$zebraconffile .= "agentx\n";
+		}
 
 		/* Access Lists */
 		$zebraconffile .= frr_zebra_generate_accesslists();
@@ -690,4 +698,21 @@ function frr_generate_config_zebra() {
 	if (!empty($staticdconffile) && ($staticdconffile != $frr_auto_config_warning)) {
 		file_put_contents("{$frr_config_base}/staticd.conf", $staticdconffile);
 	}
+}
+
+/* The following function checks for the presence of and writes the contents of "/var/etc/frr/$module.conf" into the $module . "running" field within the config.xml file  */
+function write_frr_running_config() {
+	global $config, $frr_config_base, $frr_modules;
+	$modules = array('zebra', 'staticd', 'bgpd', 'ospfd', 'ospf6d', 'bfdd');
+
+	foreach ($frr_modules as $module) {
+		$moduleRunningFile = "{$frr_config_base}/{$module}.conf";
+		if (file_exists($moduleRunningFile) && (filesize($moduleRunningFile) > 0)) {
+			$moduleRunning = fopen("$moduleRunningFile", "r");
+			$config['installedpackages']['frrglobalraw']['config'][0][$module . "running"] = base64_encode(fread($moduleRunning, filesize($moduleRunningFile)));
+		} else {
+			$config['installedpackages']['frrglobalraw']['config'][0][$module . "running"] = base64_encode("# file {$module}.conf does not exist or is empty.");
+		}
+	}
+	write_config(gettext("FRR: Wrote running configuration to pfSense config file."), false, true);
 }

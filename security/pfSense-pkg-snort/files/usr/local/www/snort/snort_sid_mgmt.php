@@ -3,7 +3,7 @@
  * snort_sid_mgmt.php
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2006-2018 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2006-2020 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2005 Bill Marquette <bill.marquette@gmail.com>.
  * Copyright (c) 2003-2004 Manuel Kasper <mk@neon1.net>.
  * Copyright (c) 2009 Robert Zelaya Sr. Developer
@@ -204,9 +204,7 @@ if (isset($_POST['save_auto_sid_conf'])) {
 			// Update the snort.conf file and
 			// rebuild rules for this interface.
 			$rebuild_rules = true;
-			conf_mount_rw();
 			snort_generate_conf($a_nat[$k]);
-			conf_mount_ro();
 			$rebuild_rules = false;
 
 			// Signal Snort to "live reload" the rules

@@ -3,7 +3,7 @@
  * routed.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2015 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2015-2020 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2006 Bill Marquette
  * All rights reserved.
  *
@@ -36,7 +36,6 @@ function setup_routed() {
 	}
 
 	$gw = "";
-	conf_mount_rw();
 
 	if (isset($config['installedpackages']['routed']['config'][0]['enable']) &&
 	    $config['installedpackages']['routed']['config'][0]['enable'] == "on") {
@@ -71,7 +70,6 @@ function setup_routed() {
 		unlink_if_exists("/usr/local/etc/rc.d/routed.sh");
 	}
 
-	conf_mount_ro();
 }
 
 function setup_etc_gateways($iface = "", $mode = "") {

@@ -43,13 +43,16 @@ post-install:
 STAGEDIR_libressl!=	${MAKE} -V STAGEDIR -C ${PORTSDIR}/security/libressl
 . endif
 BUILD_DEPENDS+=	${NONEXISTENT}:security/libressl:stage
+.endif # SSL_DEFAULT
+
 CFLAGS+=	-I${STAGEDIR_libressl}${LOCALBASE}/include
 
+.if ${OSVERSION} >= 1200000
 post-configure:
 	${REINPLACE_CMD} 's|-lssl|${STAGEDIR_libressl}${LOCALBASE}/lib/libssl.a|g' \
 		 ${WRKSRC}/relayd/Makefile
 	${REINPLACE_CMD} 's|-lcrypto|${STAGEDIR_libressl}${LOCALBASE}/lib/libcrypto.a|g' \
 		${WRKSRC}/relayd/Makefile
-.endif # SSL_DEFAULT
+.endif
 
 .include <bsd.port.post.mk>
